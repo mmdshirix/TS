@@ -54,5 +54,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|favicon.ico|theme-previews|.*\\..*).*)"],
+  // Paths containing a dot are static assets and skip the middleware, except the two
+  // SEO files every store serves at its root (rewritten to /store/<slug>/sitemap.xml …).
+  matcher: ["/((?!_next|favicon.ico|theme-previews|.*\\..*).*)", "/sitemap.xml", "/robots.txt"],
 }

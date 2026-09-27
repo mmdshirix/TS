@@ -1,0 +1,12 @@
+# Real runtime secrets — never committed. Copy the .example files and fill them in.
+deploy/*.env
+!deploy/*.env.example
+
+node_modules/
+.next/
+.env
+.env.*
+!.env.example
+
+# Local build archives (zips are generated, not source)
+dist/

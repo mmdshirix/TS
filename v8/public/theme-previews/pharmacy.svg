@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#15803d"/><stop offset="1" stop-color="#22c55e"/></linearGradient>
+<radialGradient id="r" cx="0.8" cy="0.2" r="0.8"><stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs>
+<rect width="800" height="500" fill="url(#g)"/><rect width="800" height="500" fill="url(#r)"/>
+<circle cx="656.0" cy="125.0" r="140.0" fill="#ffffff" fill-opacity="0.08"/>
+<circle cx="120.0" cy="425.0" r="110.0" fill="#ffffff" fill-opacity="0.06"/>
+<text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" font-size="190.0">💊</text>
+<text x="50%" y="88%" text-anchor="middle" font-family="Vazirmatn, sans-serif" font-size="35.0" fill="#ffffff" fill-opacity="0.9">داروخانه</text>
+</svg>

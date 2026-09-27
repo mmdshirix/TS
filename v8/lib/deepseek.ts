@@ -1,6 +1,8 @@
-const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
+// Backwards-compatible facade. All AI traffic is routed through lib/ai (Arvan by
+// default, DeepSeek as the switchable alternative). Existing imports keep working.
+import { askAI, extractJson as extractJsonUnified, AIUnavailableError, type AIMessage } from "@/lib/ai"
 
-export class DeepSeekUnavailableError extends Error {}
+export class DeepSeekUnavailableError extends AIUnavailableError {}
 
 export async function callDeepSeek(
   prompt: string,
@@ -9,46 +11,22 @@ export async function callDeepSeek(
     temperature?: number
     maxTokens?: number
     history?: { role: "user" | "assistant"; content: string }[]
+    provider?: "arvan" | "deepseek"
   } = {},
 ): Promise<string> {
-  const apiKey = process.env.DEEPSEEK_API_KEY
-  if (!apiKey) {
-    throw new DeepSeekUnavailableError("DEEPSEEK_API_KEY تنظیم نشده است")
-  }
-
-  const messages = [
-    ...(options.system ? [{ role: "system", content: options.system }] : []),
-    ...(options.history || []),
-    { role: "user", content: prompt },
-  ]
-
-  const response = await fetch(DEEPSEEK_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages,
-      temperature: options.temperature ?? 0.7,
-      max_tokens: options.maxTokens ?? 1800,
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`DeepSeek error: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return data.choices?.[0]?.message?.content || ""
-}
-
-// DeepSeek is asked to reply with a single JSON array/object; this pulls it out even
-// if the model wraps it in prose or a ```json fence.
-export function extractJson<T>(text: string): T | null {
-  const match = text.match(/\[[\s\S]*\]|\{[\s\S]*\}/)
-  if (!match) return null
   try {
-    return JSON.parse(match[0]) as T
-  } catch {
-    return null
+    return await askAI(prompt, {
+      system: options.system,
+      temperature: options.temperature,
+      maxTokens: options.maxTokens ?? 1800,
+      history: (options.history || []) as AIMessage[],
+      provider: options.provider,
+      timeoutMs: 40_000,
+    })
+  } catch (err) {
+    if (err instanceof AIUnavailableError) throw new DeepSeekUnavailableError(err.message)
+    throw err
   }
 }
+
+export const extractJson = extractJsonUnified

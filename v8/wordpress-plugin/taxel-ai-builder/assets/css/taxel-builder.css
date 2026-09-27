@@ -1,0 +1,180 @@
+/* Taxel AI Builder — "Just tell me what to build" box */
+.taxel-builder {
+  --txl-accent: #2563eb;
+  --txl-accent2: #06b6d4;
+  --txl-bg: #050b1f;
+  --txl-card: rgba(255, 255, 255, 0.05);
+  --txl-border: rgba(255, 255, 255, 0.12);
+  --txl-text: #f8fafc;
+  --txl-muted: rgba(248, 250, 252, 0.65);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 28px;
+  padding: 1px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--txl-accent) 60%, transparent), color-mix(in srgb, var(--txl-accent2) 40%, transparent), transparent 70%);
+  font-family: Vazirmatn, "IRANSansX", Vazir, system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+  color: var(--txl-text);
+  text-align: right;
+  box-shadow: 0 30px 80px -30px color-mix(in srgb, var(--txl-accent) 70%, transparent);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.taxel-builder * { box-sizing: border-box; }
+.taxel-builder.taxel-theme-light {
+  --txl-bg: #f8fbff;
+  --txl-card: rgba(255, 255, 255, 0.85);
+  --txl-border: rgba(37, 99, 235, 0.15);
+  --txl-text: #0f172a;
+  --txl-muted: #475569;
+}
+.taxel-inner {
+  position: relative;
+  border-radius: 27px;
+  background: radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--txl-accent) 22%, var(--txl-bg)) 0%, var(--txl-bg) 55%);
+  padding: 28px;
+}
+@media (min-width: 640px) { .taxel-inner { padding: 40px 44px; } }
+
+.taxel-orb {
+  position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.55; pointer-events: none; z-index: 0;
+  animation: taxel-drift 14s ease-in-out infinite;
+}
+.taxel-orb-a { width: 320px; height: 320px; right: -80px; top: -120px; background: var(--txl-accent); }
+.taxel-orb-b { width: 260px; height: 260px; left: -60px; bottom: -120px; background: var(--txl-accent2); animation-delay: -7s; }
+@keyframes taxel-drift { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-20px, 24px) scale(1.08); } }
+
+.taxel-head { position: relative; z-index: 1; margin-bottom: 22px; }
+.taxel-badge {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700;
+  padding: 6px 12px; border-radius: 999px; border: 1px solid var(--txl-border); background: var(--txl-card); color: var(--txl-text);
+  backdrop-filter: blur(10px);
+}
+.taxel-badge-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--txl-accent2); box-shadow: 0 0 0 0 var(--txl-accent2); animation: taxel-pulse 1.8s infinite; }
+@keyframes taxel-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--txl-accent2) 70%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+.taxel-title { margin: 14px 0 6px; font-size: clamp(24px, 4vw, 40px); font-weight: 900; line-height: 1.2; letter-spacing: -0.01em; color: var(--txl-text); }
+.taxel-subtitle { margin: 0; font-size: 15px; line-height: 1.9; color: var(--txl-muted); max-width: 640px; }
+
+.taxel-stage { position: relative; z-index: 1; }
+.taxel-form { margin: 0; }
+.taxel-input-wrap {
+  display: flex; align-items: flex-end; gap: 8px;
+  padding: 8px; border-radius: 22px;
+  background: var(--txl-card); border: 1px solid var(--txl-border);
+  backdrop-filter: blur(14px);
+  transition: box-shadow .3s, border-color .3s, transform .3s;
+}
+.taxel-input-wrap:focus-within {
+  border-color: color-mix(in srgb, var(--txl-accent2) 70%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--txl-accent) 25%, transparent), 0 20px 50px -20px var(--txl-accent);
+  transform: translateY(-1px);
+}
+.taxel-spark { align-self: center; margin-inline-start: 10px; color: var(--txl-accent2); font-size: 18px; animation: taxel-spin 6s linear infinite; }
+@keyframes taxel-spin { to { transform: rotate(360deg); } }
+.taxel-input {
+  flex: 1; min-width: 0; resize: none; border: 0; outline: 0; background: transparent; color: var(--txl-text);
+  font: inherit; font-size: 16px; line-height: 1.7; padding: 10px 6px; max-height: 160px; direction: rtl;
+}
+.taxel-input::placeholder { color: var(--txl-muted); }
+.taxel-btn {
+  display: inline-flex; align-items: center; gap: 8px; border: 0; cursor: pointer; white-space: nowrap;
+  padding: 12px 20px; border-radius: 16px; font: inherit; font-weight: 800; font-size: 15px; color: #fff;
+  background: linear-gradient(135deg, var(--txl-accent), var(--txl-accent2));
+  background-size: 200% 200%; animation: taxel-gradient 6s ease infinite;
+  box-shadow: 0 12px 30px -12px var(--txl-accent);
+  transition: transform .2s, filter .2s;
+}
+.taxel-btn:hover { transform: translateY(-1px) scale(1.02); filter: brightness(1.05); }
+.taxel-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.taxel-btn-arrow { transition: transform .25s; }
+.taxel-btn:hover .taxel-btn-arrow { transform: translateX(-4px); }
+@keyframes taxel-gradient { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+.taxel-typewriter { margin: 10px 14px 0; min-height: 20px; font-size: 13px; color: var(--txl-muted); }
+.taxel-typewriter::after { content: "▍"; color: var(--txl-accent2); animation: taxel-blink 1s steps(1) infinite; }
+@keyframes taxel-blink { 50% { opacity: 0; } }
+
+.taxel-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.taxel-chip {
+  border: 1px solid var(--txl-border); background: var(--txl-card); color: var(--txl-text); cursor: pointer;
+  padding: 8px 14px; border-radius: 999px; font: inherit; font-size: 13px; transition: border-color .2s, transform .2s, background .2s;
+}
+.taxel-chip:hover { border-color: var(--txl-accent2); transform: translateY(-1px); background: color-mix(in srgb, var(--txl-accent) 15%, var(--txl-card)); }
+
+/* Detected card */
+.taxel-detected {
+  border-radius: 20px; padding: 16px 18px; margin-bottom: 18px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--txl-accent) 22%, transparent), color-mix(in srgb, var(--txl-accent2) 10%, transparent));
+  border: 1px solid color-mix(in srgb, var(--txl-accent2) 30%, transparent);
+  animation: taxel-in .5s cubic-bezier(.22,1,.36,1);
+}
+.taxel-detected-kicker { font-size: 12px; font-weight: 700; color: var(--txl-accent2); display: flex; align-items: center; gap: 6px; }
+.taxel-detected-prompt { margin: 8px 0 10px; font-size: 14px; color: var(--txl-muted); line-height: 1.8; }
+.taxel-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.taxel-tag { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--txl-text) 10%, transparent); color: var(--txl-text); }
+.taxel-tag b { color: var(--txl-accent2); }
+
+/* Questions */
+.taxel-progress { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--txl-muted); margin-bottom: 14px; }
+.taxel-dots { display: flex; gap: 4px; }
+.taxel-dot { height: 6px; width: 8px; border-radius: 999px; background: color-mix(in srgb, var(--txl-text) 20%, transparent); transition: width .3s, background .3s; }
+.taxel-dot.is-on { width: 24px; background: var(--txl-accent2); }
+.taxel-q { margin-bottom: 18px; animation: taxel-in .45s cubic-bezier(.22,1,.36,1) both; }
+.taxel-q label { display: block; font-size: 14px; font-weight: 800; margin-bottom: 8px; color: var(--txl-text); }
+.taxel-q .req { color: var(--txl-accent2); }
+.taxel-text {
+  width: 100%; border-radius: 16px; border: 1px solid var(--txl-border); background: var(--txl-card); color: var(--txl-text);
+  padding: 12px 14px; font: inherit; font-size: 14px; outline: 0; direction: rtl;
+}
+.taxel-text:focus { border-color: var(--txl-accent2); }
+.taxel-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.taxel-option {
+  border: 1px solid var(--txl-border); background: var(--txl-card); color: var(--txl-text); cursor: pointer;
+  padding: 9px 14px; border-radius: 999px; font: inherit; font-size: 13px; transition: all .2s;
+}
+.taxel-option:hover { border-color: var(--txl-accent2); }
+.taxel-option.is-selected { background: linear-gradient(135deg, var(--txl-accent), var(--txl-accent2)); color: #fff; border-color: transparent; font-weight: 700; }
+.taxel-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.taxel-ghost { border: 1px solid var(--txl-border); background: transparent; color: var(--txl-text); padding: 11px 18px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer; }
+.taxel-ghost:hover { background: var(--txl-card); }
+
+/* Done */
+.taxel-done { text-align: center; padding: 10px 0 4px; animation: taxel-in .5s cubic-bezier(.22,1,.36,1); }
+.taxel-check {
+  width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 14px; display: grid; place-items: center; font-size: 30px; color: #fff;
+  background: linear-gradient(135deg, var(--txl-accent), var(--txl-accent2)); box-shadow: 0 20px 40px -15px var(--txl-accent);
+  animation: taxel-pop .5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes taxel-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.taxel-done h4 { margin: 0 0 6px; font-size: 22px; font-weight: 900; color: var(--txl-text); }
+.taxel-done p { margin: 0 0 18px; color: var(--txl-muted); font-size: 14px; line-height: 1.8; }
+.taxel-cta { display: inline-flex; align-items: center; gap: 8px; text-decoration: none !important; }
+
+/* Loading */
+.taxel-loading { display: flex; align-items: center; gap: 12px; padding: 18px 8px; color: var(--txl-muted); font-size: 14px; }
+.taxel-loader { position: relative; width: 28px; height: 28px; }
+.taxel-loader::before, .taxel-loader::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid transparent; border-top-color: var(--txl-accent2); animation: taxel-spin 1s linear infinite; }
+.taxel-loader::after { inset: 6px; border-top-color: var(--txl-accent); animation-direction: reverse; animation-duration: .7s; }
+
+.taxel-error { position: relative; z-index: 1; margin-top: 12px; padding: 10px 14px; border-radius: 14px; font-size: 13px; color: #fecaca; background: rgba(239, 68, 68, .15); border: 1px solid rgba(239, 68, 68, .3); }
+.taxel-theme-light .taxel-error { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+
+.taxel-footer { position: relative; z-index: 1; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 22px; font-size: 11px; color: var(--txl-muted); }
+.taxel-footer a { color: var(--txl-muted); text-decoration: none; font-weight: 700; }
+.taxel-footer a:hover { color: var(--txl-accent2); }
+
+.taxel-builder.is-compact .taxel-inner { padding: 18px; }
+.taxel-builder.is-compact .taxel-footer { display: none; }
+
+@keyframes taxel-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 520px) {
+  .taxel-input-wrap { flex-direction: column; align-items: stretch; }
+  .taxel-spark { display: none; }
+  .taxel-btn { justify-content: center; }
+  .taxel-actions { flex-direction: column-reverse; }
+  .taxel-actions .taxel-btn, .taxel-actions .taxel-ghost { width: 100%; justify-content: center; text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .taxel-orb, .taxel-badge-dot, .taxel-spark, .taxel-btn { animation: none !important; }
+}

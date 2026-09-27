@@ -1,62 +1,18 @@
 import { NextResponse } from "next/server"
+import { getProviderConfigs, testProvider } from "@/lib/ai"
 
+export const dynamic = "force-dynamic"
+export const runtime = "nodejs"
+
+// Reports both providers' configured model + live reachability.
 export async function GET() {
-  try {
-    const apiKey = process.env.DEEPSEEK_API_KEY
-
-    if (!apiKey) {
-      return NextResponse.json({ error: "API key missing" }, { status: 500 })
-    }
-
-    // Test different model names
-    const modelsToTest = ["deepseek-chat", "deepseek-coder", "deepseek-r1", "deepseek-v2"]
-    const results = []
-
-    for (const model of modelsToTest) {
-      try {
-        const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: [{ role: "user", content: "test" }],
-            max_tokens: 1,
-          }),
-        })
-
-        if (response.ok) {
-          results.push({ model, status: "available" })
-        } else {
-          const errorData = await response.json()
-          results.push({
-            model,
-            status: "error",
-            error: errorData.error?.message || "Unknown error",
-          })
-        }
-      } catch (error) {
-        results.push({
-          model,
-          status: "error",
-          error: String(error),
-        })
-      }
-    }
-
-    return NextResponse.json({
-      results,
-      apiKeyPresent: !!apiKey,
-    })
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error: "Failed to test models",
-        details: String(error),
-      },
-      { status: 500 },
-    )
-  }
+  const configs = await getProviderConfigs()
+  const results = await Promise.all(
+    (["arvan", "deepseek"] as const).map(async (id) => {
+      const cfg = configs[id]
+      const test = cfg.apiKey && cfg.baseUrl ? await testProvider(id) : { ok: false, latencyMs: 0, model: cfg.model, error: "not configured" }
+      return { provider: id, label: cfg.label, configured: Boolean(cfg.apiKey && cfg.baseUrl), ...test, model: test.model || cfg.model }
+    }),
+  )
+  return NextResponse.json({ results })
 }

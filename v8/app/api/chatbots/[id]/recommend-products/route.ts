@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { askAI } from "@/lib/ai"
 import { getChatbotProducts } from "@/lib/db"
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -19,12 +19,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     console.log("[v0] Found", products.length, "products")
 
-    const apiKey = process.env.DEEPSEEK_API_KEY
-    if (!apiKey) {
-      const shuffled = [...products].sort(() => 0.5 - Math.random())
-      return NextResponse.json({ recommendations: shuffled.slice(0, 2) })
-    }
-
     const productsInfo = products.map((p) => `ID:${p.id} - ${p.name}`).join("\n")
 
     const prompt = `بر اساس این مکالمه، کدام محصولات را پیشنهاد می‌دهید؟
@@ -38,28 +32,12 @@ ${productsInfo}
 فقط آرایه ID محصولات مرتبط را برگردانید (حداکثر 2 محصول):
 [123, 456]`
 
-    const response = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.5,
-        max_tokens: 100,
-      }),
-    })
-
-    if (!response.ok) {
-      console.error("[v0] DeepSeek error:", response.status)
-      const shuffled = [...products].sort(() => 0.5 - Math.random())
-      return NextResponse.json({ recommendations: shuffled.slice(0, 2) })
+    let aiResponse = "[]"
+    try {
+      aiResponse = await askAI(prompt, { temperature: 0.5, maxTokens: 100, timeoutMs: 12_000 })
+    } catch (err) {
+      console.error("[v0] AI error:", err instanceof Error ? err.message : err)
     }
-
-    const data = await response.json()
-    const aiResponse = data.choices[0]?.message?.content || "[]"
 
     console.log("[v0] AI response:", aiResponse)
 

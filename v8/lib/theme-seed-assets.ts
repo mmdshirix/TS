@@ -81,6 +81,36 @@ const SEED_ASSETS: Record<StoreCategorySlug, ThemeSeedAssets> = {
     ],
     categories: [],
   },
+  medical: {
+    banners: ["banner-1.svg"],
+    products: [
+      { name: "ویزیت عمومی", file: "product-1.svg" },
+      { name: "مشاوره تخصصی قلب", file: "product-2.svg" },
+      { name: "ویزیت پوست و مو", file: "product-3.svg" },
+      { name: "مشاوره آنلاین تغذیه", file: "product-4.svg" },
+    ],
+    categories: [
+      { name: "قلب و عروق", file: "category-1.svg" },
+      { name: "پوست و مو", file: "category-2.svg" },
+      { name: "داخلی", file: "category-3.svg" },
+      { name: "کودکان", file: "category-4.svg" },
+    ],
+  },
+  pharmacy: {
+    banners: ["banner-1.svg"],
+    products: [
+      { name: "مولتی‌ویتامین روزانه", file: "product-1.svg" },
+      { name: "ضدآفتاب SPF50", file: "product-2.svg" },
+      { name: "شربت سرفه گیاهی", file: "product-3.svg" },
+      { name: "پوشک کودک سایز ۴", file: "product-4.svg" },
+    ],
+    categories: [
+      { name: "مکمل و ویتامین", file: "category-1.svg" },
+      { name: "مراقبت پوست", file: "category-2.svg" },
+      { name: "مادر و کودک", file: "category-3.svg" },
+      { name: "داروهای بدون نسخه", file: "category-4.svg" },
+    ],
+  },
   mobile: {
     banners: ["banner-1.png", "banner-2.png", "banner-3.png"],
     products: [

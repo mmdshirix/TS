@@ -18,9 +18,10 @@ import { useRouter } from "next/navigation"
 import type { User } from "@/lib/auth"
 import React from "react"
 import ChatbotSwitcher from "@/components/chatbot-switcher"
-import DashboardSidebar from "@/components/dashboard-sidebar"
+import DashboardSidebar, { type SidebarProps } from "@/components/dashboard-sidebar"
+import { StartTourButton } from "@/components/onboarding/tour"
 
-export default function DashboardHeader({ user }: { user: User }) {
+export default function DashboardHeader({ user, storeKind = null, hasStore = false }: { user: User } & SidebarProps) {
   const router = useRouter()
   const [trialActive, setTrialActive] = React.useState(user.is_trial_active)
   const [daysRemaining, setDaysRemaining] = React.useState(0)
@@ -57,7 +58,7 @@ export default function DashboardHeader({ user }: { user: User }) {
           </Button>
         </SheetTrigger>
         <SheetContent side="right" className="p-0 w-[280px] bg-white">
-          <DashboardSidebar />
+          <DashboardSidebar storeKind={storeKind} hasStore={hasStore} />
         </SheetContent>
       </Sheet>
 
@@ -71,6 +72,10 @@ export default function DashboardHeader({ user }: { user: User }) {
 
       {/* Right Side */}
       <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-1 sm:flex-initial justify-end">
+        <div className="hidden md:block">
+          <StartTourButton />
+        </div>
+
         {/* Chatbot Switcher - Responsive */}
         <div className="hidden lg:block">
           <ChatbotSwitcher />

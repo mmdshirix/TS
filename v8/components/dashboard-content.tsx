@@ -10,6 +10,7 @@ import { useEffect, useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import SubscriptionUsageDashboard from "@/components/subscription-usage-dashboard"
+import GettingStarted from "@/components/onboarding/getting-started"
 
 interface DashboardStats {
   activeChatbots: number
@@ -130,20 +131,22 @@ export default function DashboardContent({ user }: { user: User }) {
       <SubscriptionUsageDashboard />
 
       {/* Welcome Section */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+      <div data-tour="welcome" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            سلام، {user.first_name} {user.last_name}
+            سلام، {user.first_name} {user.last_name} 👋
           </h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">به داشبورد خود خوش آمدید</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">همه چیز برای رشد کسب‌وکار شما، در یک داشبورد</p>
         </div>
-        <Link href="/dashboard/chatbots/new" className="w-full sm:w-auto">
+        <Link href="/dashboard/getting-started" className="w-full sm:w-auto">
           <Button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-2xl shadow-lg text-sm sm:text-base py-5 sm:py-2.5">
             <Plus className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
-            ساخت چت‌بات جدید
+            شروع سریع و آموزش
           </Button>
         </Link>
       </div>
+
+      <GettingStarted />
 
       {/* Default Tone Settings Card */}
       <Card className="rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100">

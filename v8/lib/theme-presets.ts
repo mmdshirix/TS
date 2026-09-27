@@ -32,6 +32,10 @@ const THEME_TOKENS: Record<StoreCategorySlug, ThemeTokens> = {
   perfumes: { primary: "#6d28d9", secondary: "#a78bfa", surface: "#faf5ff", radius: "1rem" },
   // Tech/mobile: cool blue + sky, crisp corners.
   mobile: { primary: "#2563eb", secondary: "#0ea5e9", surface: "#f0f9ff", radius: "0.5rem" },
+  // Clinic: calm teal + deep navy, clinical white surface, soft radius.
+  medical: { primary: "#0f766e", secondary: "#0ea5e9", surface: "#f0fdfa", radius: "1rem" },
+  // Pharmacy: trustworthy green + mint, very clean surface, pill radius.
+  pharmacy: { primary: "#15803d", secondary: "#22c55e", surface: "#f0fdf4", radius: "1.25rem" },
 }
 
 const PREVIEW_IMAGES: Record<StoreCategorySlug, string> = {
@@ -41,6 +45,8 @@ const PREVIEW_IMAGES: Record<StoreCategorySlug, string> = {
   "bags-shoes": "/theme-previews/bags-shoes.webp",
   perfumes: "/theme-previews/perfumes.webp",
   mobile: "/theme-previews/mobile.webp",
+  medical: "/theme-previews/medical.svg",
+  pharmacy: "/theme-previews/pharmacy.svg",
 }
 
 export const THEME_PRESETS: ThemePreset[] = STORE_CATEGORIES.map((c) => ({

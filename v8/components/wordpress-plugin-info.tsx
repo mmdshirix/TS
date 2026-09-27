@@ -21,6 +21,19 @@ export default function WordPressPluginInfo() {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div className="rounded-2xl border-2 border-blue-200 bg-white/90 p-5 space-y-2">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <div className="font-bold text-blue-900">افزونه «Taxel AI Builder» (جدید)</div>
+              <div className="text-sm text-blue-700">باکس «فقط بگو چی می‌خوای بسازیم» با شورت‌کد <code className="bg-blue-50 px-1 rounded">[taxel_builder]</code> — بازدیدکننده سایت وردپرس شما را در چند کلیک به یک سایت آماده روی تاکسل می‌رساند.</div>
+            </div>
+            <a href="https://github.com/mmdshirix/ts/tree/main/v8/wordpress-plugin/taxel-ai-builder" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 text-white px-4 py-2 text-sm font-bold">
+              <Download className="w-4 h-4" /> دریافت افزونه
+            </a>
+          </div>
+          <p className="text-xs text-blue-700">پوشه <code>v8/wordpress-plugin/taxel-ai-builder</code> را zip کنید و در وردپرس نصب نمایید؛ سپس آدرس پلتفرم و کلید API را در تنظیمات افزونه وارد کنید.</p>
+        </div>
+
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-purple-100 shadow-inner">
           <p className="text-purple-900 font-medium mb-4">با نصب افزونه، چت‌بات به اطلاعات زیر دسترسی پیدا می‌کند:</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
