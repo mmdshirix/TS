@@ -7,3 +7,6 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Local build archives (zips are generated, not source)
+dist/
