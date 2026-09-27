@@ -1,0 +1,48 @@
+version: '3.8'
+
+# NOTE: NEXT_PUBLIC_* variables (NEXT_PUBLIC_PLATFORM_URL, NEXT_PUBLIC_MARKETING_URL)
+# are inlined into the client bundle at `next build` time, which now runs INSIDE the
+# Docker build (see Dockerfile). They must be passed as build args, not just runtime
+# `environment:` entries — setting them only there has no effect on already-built
+# client code. DATABASE_URL is the one true runtime secret and belongs in a local
+# .env file (see .env.example), never committed or hardcoded here.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_PLATFORM_URL=${NEXT_PUBLIC_PLATFORM_URL}
+        - NEXT_PUBLIC_MARKETING_URL=${NEXT_PUBLIC_MARKETING_URL}
+
+    ports:
+      - "3001:3001"
+
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOSTNAME=0.0.0.0
+      - NEXT_TELEMETRY_DISABLED=1
+
+      # Same Postgres database as the v8 admin app (read/write for orders, cart, products)
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_MAX_CONNECTIONS=${POSTGRES_MAX_CONNECTIONS:-3}
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Needed for outbound connections to the external Postgres host
+    network_mode: bridge
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

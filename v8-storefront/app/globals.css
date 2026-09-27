@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "IRANSansXFaNum";
+  src: url("/fonts/IRANSansXFaNum-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IRANSansXFaNum";
+  src: url("/fonts/IRANSansXFaNum-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+.text-brand {
+  color: var(--store-primary, #2563eb);
+}
+
+.bg-brand {
+  background-color: var(--store-primary, #2563eb);
+}
+
+.border-brand {
+  border-color: var(--store-primary, #2563eb);
+}
+
+.text-brand-secondary {
+  color: var(--store-secondary, #0ea5e9);
+}
+
+.bg-brand-secondary {
+  background-color: var(--store-secondary, #0ea5e9);
+}
+
+.bg-brand-surface {
+  background-color: var(--store-surface, #f0f9ff);
+}
+
+.rounded-brand {
+  border-radius: var(--store-radius, 0.5rem);
+}
+
+.bg-store-nav {
+  background: var(--store-nav, linear-gradient(to left, var(--store-primary, #2563eb), var(--store-secondary, #0ea5e9)));
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
