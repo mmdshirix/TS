@@ -86,7 +86,11 @@ No test framework. Manual testing via `/test-*` and `/debug-*` routes.
 | Variable | Description |
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string |
-| `DEEPSEEK_API_KEY` | DeepSeek API for AI chat |
+| `AI_PROVIDER` | `arvan` (default) or `deepseek` — all AI traffic goes through `lib/ai` |
+| `ARVAN_API_URL` / `ARVAN_API_KEY` / `ARVAN_MODEL` | ArvanCloud AI gateway (primary) |
+| `DEEPSEEK_API_KEY` | DeepSeek (switchable fallback) |
+| `META_APP_ID` / `META_APP_SECRET` / `INSTAGRAM_VERIFY_TOKEN` / `INSTAGRAM_TOKEN_ENCRYPTION_KEY` | Instagram DM automation (see docs/instagram-setup.md) |
+| `STOREFRONT_BASE_DOMAIN` | e.g. `tsll.ir` — used for store links, sitemaps and Instagram cards |
 | `NEXT_PUBLIC_APP_URL` | Public base URL |
 | `STACK_SECRET_SERVER_KEY` | Stack Auth (referenced in docker-compose but not actively used in code) |
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Optional, configured but unused |
@@ -130,3 +134,12 @@ and my deepseek api key is : [DEEPSEEK_API_KEY in .env]
 - Added loading states with spinners
 - Improved input fields with icons and better validation feedback
 - Added smooth transitions and gradient styling
+
+## v9 additions (Taxel)
+
+- `lib/ai/` — single AI entry point (`chatCompletion`, `streamChatCompletion`, `askAI`, tones, budgets). `lib/deepseek.ts` is a compatibility facade; never call provider URLs directly.
+- `lib/store-categories.ts` — 8 templates incl. `medical` (kind `clinic`) and `pharmacy`. `getStoreKind()` drives the sidebar and dashboard modules.
+- `lib/clinic-db.ts`, `lib/pharmacy-db.ts`, `lib/seo-db.ts`, `lib/onboarding-db.ts`, `lib/intake.ts`, `lib/instagram.ts` — new modules; tables in `scripts/create-taxel-v9-platform.sql`.
+- `scripts/setup.js` (`npm run db:setup`) — migrations + defaults + admin user + WordPress intake API key.
+- `app/start` + `app/api/intake/*` — WordPress plugin hand-off. Plugin source in `wordpress-plugin/`.
+- Storefront (`../v8-storefront`): `lib/themes.ts` registry, `components/themes/<slug>/home.tsx` per category, `components/motion` primitives, clinic booking (`/book`), pharmacy (`/prescription`), SEO helpers in `lib/seo.tsx`, `sitemap.xml` / `robots.txt` routes.

@@ -1,290 +1,322 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  Settings,
-  Save,
-  RefreshCw,
-  Check,
-  X as XIcon,
-  Cpu,
-  Key,
-  ExternalLink,
-  Globe,
-} from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Cpu, Save, RefreshCw, Check, Zap, Key, Globe, Activity, ShieldCheck, ArrowLeftRight } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-// The real gateway URL contains an access token, so it lives server-side in ARVAN_API_URL
-const ARVAN_API_URL_DISPLAY = "https://arvancloudai.ir/gateway/models/Xerxes-1/•••/v1"
+type ProviderId = "arvan" | "deepseek"
 
-interface AISettings {
-  id: string
-  provider: "deepseek" | "arvan"
-  apiKey: string
-  apiUrl: string
+interface ProviderState {
+  configured: boolean
+  apiUrl?: string
+  apiKeyMasked: string
   model: string
+  source: "database" | "env" | "none"
 }
 
+interface AISettingsResponse {
+  provider: ProviderId
+  fallbackEnabled: boolean
+  arvan: ProviderState
+  deepseek: ProviderState
+}
+
+interface TestResult {
+  ok: boolean
+  latencyMs: number
+  model: string
+  error?: string
+  sample?: string
+}
+
+const PROVIDERS: Array<{ id: ProviderId; name: string; tagline: string; accent: string; docs: string }> = [
+  {
+    id: "arvan",
+    name: "ArvanCloud AI",
+    tagline: "سرور داخل ایران، تاخیر بسیار کم، پیش‌فرض پلتفرم",
+    accent: "from-emerald-500 to-teal-500",
+    docs: "https://arvancloudai.ir",
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek",
+    tagline: "سرویس بین‌المللی، به‌عنوان گزینه جایگزین",
+    accent: "from-blue-500 to-indigo-500",
+    docs: "https://platform.deepseek.com",
+  },
+]
+
 export default function SuperAdminAISettings() {
-  const [settings, setSettings] = useState<AISettings>({
-    id: "1",
-    provider: "deepseek",
-    apiKey: "",
-    apiUrl: "https://api.deepseek.com/chat/completions",
-    model: "deepseek-chat",
-  })
-  const [loading, setLoading] = useState(false)
+  const [data, setData] = useState<AISettingsResponse | null>(null)
+  const [provider, setProvider] = useState<ProviderId>("arvan")
+  const [fallback, setFallback] = useState(true)
+  const [arvanUrl, setArvanUrl] = useState("")
+  const [arvanKey, setArvanKey] = useState("")
+  const [arvanModel, setArvanModel] = useState("")
+  const [deepseekKey, setDeepseekKey] = useState("")
+  const [deepseekModel, setDeepseekModel] = useState("")
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tests, setTests] = useState<Partial<Record<ProviderId, TestResult | "loading">>>({})
+
+  const load = async () => {
+    const res = await fetch("/api/super-admin/ai", { cache: "no-store" })
+    if (!res.ok) return
+    const json = (await res.json()) as AISettingsResponse
+    setData(json)
+    setProvider(json.provider)
+    setFallback(json.fallbackEnabled)
+    setArvanModel(json.arvan.model)
+    setDeepseekModel(json.deepseek.model)
+  }
 
   useEffect(() => {
-    fetchSettings()
+    load().catch(() => setError("خطا در دریافت تنظیمات"))
   }, [])
 
-  const fetchSettings = async () => {
-    try {
-      const res = await fetch("/api/super-admin/settings?key=ai_provider")
-      const data = await res.json()
-      const savedProvider = data?.value as "deepseek" | "arvan" | undefined
-
-      if (savedProvider) {
-        setSettings((prev) => ({
-          ...prev,
-          provider: savedProvider,
-          apiUrl: savedProvider === "arvan"
-            ? ARVAN_API_URL_DISPLAY
-            : "https://api.deepseek.com/chat/completions",
-          model: savedProvider === "arvan" ? "Xerxes-1" : "deepseek-chat",
-        }))
-      }
-
-      const keyResponse = await fetch("/api/super-admin/settings?key=ai_api_key")
-      const keyData = await keyResponse.json()
-      if (keyData?.value) {
-        setSettings((prev) => ({ ...prev, apiKey: keyData.value }))
-      }
-    } catch (err) {
-      console.error("Error fetching settings:", err)
-    }
-  }
-
-  const handleSave = async () => {
-    setLoading(true)
+  const save = async () => {
+    setSaving(true)
     setError(null)
-    setSaved(false)
-
     try {
-      // Save AI provider
-      await fetch("/api/super-admin/settings", {
+      const payload: Record<string, string> = {
+        ai_provider: provider,
+        ai_fallback_enabled: fallback ? "true" : "false",
+        arvan_model: arvanModel,
+        deepseek_model: deepseekModel,
+      }
+      if (arvanUrl.trim()) payload.arvan_api_url = arvanUrl.trim()
+      if (arvanKey.trim()) payload.arvan_api_key = arvanKey.trim()
+      if (deepseekKey.trim()) payload.deepseek_api_key = deepseekKey.trim()
+
+      const res = await fetch("/api/super-admin/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          setting_key: "ai_provider",
-          setting_value: settings.provider,
-        }),
+        body: JSON.stringify(payload),
       })
-
-      // Save API key
-      await fetch("/api/super-admin/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          setting_key: "ai_api_key",
-          setting_value: settings.apiKey,
-        }),
-      })
-
+      if (!res.ok) throw new Error()
+      setArvanKey("")
+      setDeepseekKey("")
+      setArvanUrl("")
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
-    } catch (err) {
+      await load()
+    } catch {
       setError("خطا در ذخیره تنظیمات")
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
-  const handleProviderChange = (provider: "deepseek" | "arvan") => {
-    setSettings({
-      ...settings,
-      provider,
-      apiUrl: provider === "arvan"
-        ? ARVAN_API_URL_DISPLAY
-        : "https://api.deepseek.com/chat/completions",
-      model: provider === "arvan" ? "Xerxes-1" : "deepseek-chat",
-    })
+  const runTest = async (id: ProviderId) => {
+    setTests((t) => ({ ...t, [id]: "loading" }))
+    try {
+      const res = await fetch(`/api/super-admin/ai?test=${id}`, { method: "PUT" })
+      const json = (await res.json()) as TestResult
+      setTests((t) => ({ ...t, [id]: json }))
+    } catch {
+      setTests((t) => ({ ...t, [id]: { ok: false, latencyMs: 0, model: "", error: "اتصال برقرار نشد" } }))
+    }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6" dir="rtl">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Cpu className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#1e1b4b_0%,_#0f172a_45%,_#020617_100%)] p-4 sm:p-8" dir="rtl">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-fuchsia-500/30">
+            <Cpu className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-white">تنظیمات هوش مصنوعی</h1>
-            <p className="text-purple-200">مدیریت سرویس دهندگان و کلیدهای API</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">موتور هوش مصنوعی</h1>
+            <p className="text-slate-300 text-sm">انتخاب سرویس‌دهنده، مدیریت کلیدها و تست سرعت پاسخ</p>
           </div>
         </div>
 
-        <Card className="p-8 bg-white/10 backdrop-blur-lg border-white/20 rounded-3xl">
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <Globe className="w-6 h-6 text-purple-400" />
-              <h2 className="text-xl font-bold text-white">سرویس دهنده هوش مصنوعی</h2>
+        {/* Provider picker */}
+        <div className="grid md:grid-cols-2 gap-4">
+          {PROVIDERS.map((p) => {
+            const state = data?.[p.id]
+            const active = provider === p.id
+            const test = tests[p.id]
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setProvider(p.id)}
+                className={cn(
+                  "relative text-right rounded-3xl p-5 border transition-all duration-300 bg-white/5 backdrop-blur",
+                  active ? "border-white/60 shadow-[0_0_0_1px_rgba(255,255,255,.4),0_20px_60px_-20px_rgba(168,85,247,.6)]" : "border-white/10 hover:border-white/30",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-11 h-11 rounded-2xl bg-gradient-to-br flex items-center justify-center", p.accent)}>
+                      <Zap className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="text-white font-bold flex items-center gap-2">
+                        {p.name}
+                        {active && <Badge className="bg-white text-slate-900 rounded-lg">پیش‌فرض</Badge>}
+                      </div>
+                      <div className="text-xs text-slate-300 mt-0.5">{p.tagline}</div>
+                    </div>
+                  </div>
+                  <span
+                    className={cn(
+                      "text-[11px] px-2 py-1 rounded-lg",
+                      state?.configured ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-200",
+                    )}
+                  >
+                    {state?.configured ? "پیکربندی شده" : "کلید ندارد"}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-300">
+                  <div className="bg-black/20 rounded-xl p-2">
+                    <div className="text-slate-400">مدل</div>
+                    <div className="text-white font-mono truncate" dir="ltr">{state?.model || "-"}</div>
+                  </div>
+                  <div className="bg-black/20 rounded-xl p-2">
+                    <div className="text-slate-400">کلید</div>
+                    <div className="text-white font-mono truncate" dir="ltr">{state?.apiKeyMasked || "—"}</div>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">منبع: {state?.source === "database" ? "پنل" : state?.source === "env" ? "متغیر محیطی" : "—"}</span>
+                  <span
+                    role="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      runTest(p.id)
+                    }}
+                    className="inline-flex items-center gap-1 text-xs text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl"
+                  >
+                    {test === "loading" ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
+                    تست سرعت
+                  </span>
+                </div>
+
+                {test && test !== "loading" && (
+                  <div className={cn("mt-3 rounded-xl p-3 text-xs", test.ok ? "bg-emerald-500/15 text-emerald-200" : "bg-red-500/15 text-red-200")}>
+                    {test.ok ? (
+                      <>
+                        <div className="font-bold">✓ متصل — {test.latencyMs} میلی‌ثانیه</div>
+                        {test.sample && <div className="mt-1 text-white/80">پاسخ نمونه: {test.sample}</div>}
+                      </>
+                    ) : (
+                      <div dir="auto">✕ {test.error}</div>
+                    )}
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Credentials */}
+        <Card className="p-6 sm:p-8 bg-white/5 backdrop-blur border-white/10 rounded-3xl space-y-8">
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-white font-bold">
+                <Globe className="w-5 h-5 text-emerald-400" /> ArvanCloud AI
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">آدرس Gateway (با /v1)</Label>
+                <Input
+                  dir="ltr"
+                  value={arvanUrl}
+                  onChange={(e) => setArvanUrl(e.target.value)}
+                  placeholder={data?.arvan.apiUrl || "https://arvancloudai.ir/gateway/models/<model>/<token>/v1"}
+                  className="bg-black/30 border-white/10 text-white h-12 rounded-2xl font-mono text-xs"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Access Key</Label>
+                <div className="relative">
+                  <Key className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    dir="ltr"
+                    type="password"
+                    value={arvanKey}
+                    onChange={(e) => setArvanKey(e.target.value)}
+                    placeholder={data?.arvan.apiKeyMasked || "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"}
+                    className="pr-11 bg-black/30 border-white/10 text-white h-12 rounded-2xl font-mono text-xs"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400">هدر احراز هویت به‌صورت خودکار «Authorization: apikey …» ارسال می‌شود.</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">نام مدل</Label>
+                <Input dir="ltr" value={arvanModel} onChange={(e) => setArvanModel(e.target.value)} className="bg-black/30 border-white/10 text-white h-12 rounded-2xl font-mono text-xs" />
+              </div>
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-purple-200 font-medium">سرویس دهنده</Label>
-                <Select
-                  value={settings.provider}
-                  onValueChange={(v) => handleProviderChange(v as "deepseek" | "arvan")}
-                >
-                  <SelectTrigger className="bg-white/10 border-white/20 text-white h-12 rounded-2xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="deepseek" className="cursor-pointer hover:bg-gray-100">
-                      <div className="flex items-center gap-3">
-                        <Badge className="bg-blue-500 text-white rounded-xl">DeepSeek</Badge>
-                        <span>DeepSeek AI (پیش‌فرض)</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="arvan" className="cursor-pointer hover:bg-gray-100">
-                      <div className="flex items-center gap-3">
-                        <Badge className="bg-green-500 text-white rounded-xl">آروان</Badge>
-                        <span>Arvan Cloud AI (محلی)</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-2 text-white font-bold">
+                <Globe className="w-5 h-5 text-blue-400" /> DeepSeek
               </div>
-
               <div className="space-y-2">
-                <Label className="text-purple-200 font-medium">کلید API</Label>
+                <Label className="text-slate-300">API Key</Label>
                 <div className="relative">
-                  <Key className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
+                  <Key className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
+                    dir="ltr"
                     type="password"
-                    value={settings.apiKey}
-                    onChange={(e) => setSettings({ ...settings, apiKey: e.target.value })}
-                    placeholder={settings.provider === "deepseek" ? "sk-..." : "کلید API آروان..."}
-                    className="pr-12 bg-white/10 border-white/20 text-white placeholder:text-purple-300 h-12 rounded-2xl"
+                    value={deepseekKey}
+                    onChange={(e) => setDeepseekKey(e.target.value)}
+                    placeholder={data?.deepseek.apiKeyMasked || "sk-..."}
+                    className="pr-11 bg-black/30 border-white/10 text-white h-12 rounded-2xl font-mono text-xs"
                   />
                 </div>
-                <p className="text-xs text-purple-300">
-                  {settings.provider === "deepseek"
-                    ? "کلید API دیپ‌سیک را وارد کنید (از https://platform.deepseek.com)"
-                    : "کلید API آروان کلود را وارد کنید (از https://arvancloudai.ir)"}
-                </p>
               </div>
-
               <div className="space-y-2">
-                <Label className="text-purple-200 font-medium">آدرس API</Label>
-                <Input
-                  value={settings.apiUrl}
-                  onChange={(e) => setSettings({ ...settings, apiUrl: e.target.value })}
-                  className="bg-white/10 border-white/20 text-white h-12 rounded-2xl"
-                  readOnly
-                />
-                <p className="text-xs text-purple-300">آدرس به صورت خودکار تنظیم می‌شود</p>
+                <Label className="text-slate-300">نام مدل</Label>
+                <Input dir="ltr" value={deepseekModel} onChange={(e) => setDeepseekModel(e.target.value)} className="bg-black/30 border-white/10 text-white h-12 rounded-2xl font-mono text-xs" />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-purple-200 font-medium">مدل</Label>
-                <Input
-                  value={settings.model}
-                  onChange={(e) => setSettings({ ...settings, model: e.target.value })}
-                  className="bg-white/10 border-white/20 text-white h-12 rounded-2xl"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4">
-                <p className="text-red-300">{error}</p>
-              </div>
-            )}
-
-            {saved && (
-              <div className="bg-green-500/20 border border-green-500/30 rounded-2xl p-4 flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-400" />
-                <p className="text-green-300">تنظیمات با موفقیت ذخیره شد</p>
-              </div>
-            )}
-
-            <div className="flex gap-4">
-              <Button
-                onClick={handleSave}
-                disabled={loading}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white h-12 rounded-2xl"
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="w-5 h-5 ml-2 animate-spin" />
-                    در حال ذخیره...
-                  </>
-                ) : saved ? (
-                  <>
-                    <Check className="w-5 h-5 ml-2" />
-                    ذخیره شد
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-5 h-5 ml-2" />
-                    ذخیره تنظیمات
-                  </>
-                )}
-              </Button>
-              <a
-                href={settings.provider === "arvan" ? "https://arvancloudai.ir" : "https://platform.deepseek.com"}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button
-                  variant="outline"
-                  className="h-12 rounded-2xl border-white/20 text-purple-200 hover:bg-white/10"
-                >
-                  <ExternalLink className="w-5 h-5 ml-2" />
-                  دریافت کلید API
-                </Button>
-              </a>
-            </div>
-
-            <div className="border-t border-white/10 pt-6 mt-6">
-              <h3 className="text-lg font-bold text-white mb-4">راهنمای استفاده</h3>
-              <div className="space-y-4 text-purple-200 text-sm">
-                <div className="p-4 bg-white/5 rounded-2xl">
-                  <p className="font-semibold text-white mb-2">DeepSeek AI:</p>
-                  <ul className="list-disc list-inside mr-4 space-y-1">
-                    <li>سرویس هوش مصنوعی بین‌المللی</li>
-                    <li>کیفیت بالا در پاسخ‌دهی</li>
-                    <li>قیمت مناسب</li>
-                    <li>سایت: <span className="text-blue-300">https://platform.deepseek.com</span></li>
-                  </ul>
+              <div className="flex items-center justify-between bg-black/20 rounded-2xl p-4 mt-6">
+                <div className="flex items-center gap-3">
+                  <ArrowLeftRight className="w-5 h-5 text-fuchsia-300" />
+                  <div>
+                    <div className="text-white text-sm font-medium">سوییچ خودکار در صورت خطا</div>
+                    <div className="text-[11px] text-slate-400">اگر سرویس پیش‌فرض پاسخ نداد، درخواست به سرویس دیگر ارسال می‌شود</div>
+                  </div>
                 </div>
-                <div className="p-4 bg-white/5 rounded-2xl">
-                  <p className="font-semibold text-white mb-2">Arvan Cloud AI:</p>
-                  <ul className="list-disc list-inside mr-4 space-y-1">
-                    <li>سرویس هوش مصنوعی ایرانی</li>
-                    <li>داده‌های داخل ایران</li>
-                    <li>سرعت بالا برای کاربران ایران</li>
-                    <li>سایت: <span className="text-blue-300">https://arvancloudai.ir</span></li>
-                  </ul>
-                </div>
-                <p className="text-xs text-purple-300 mt-4">
-                  نکته: شما می‌توانید برای هر چت‌بات، سرویس دهنده متفاوتی را در تنظیمات چت‌بات انتخاب کنید.
-                  این تنظیمات برای تمام چت‌بات‌های جدید استفاده خواهد شد.
-                </p>
+                <Switch checked={fallback} onCheckedChange={setFallback} />
               </div>
             </div>
           </div>
+
+          {error && <div className="bg-red-500/20 border border-red-500/30 rounded-2xl p-4 text-red-200 text-sm">{error}</div>}
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button onClick={save} disabled={saving} className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white">
+              {saving ? <RefreshCw className="w-5 h-5 ml-2 animate-spin" /> : saved ? <Check className="w-5 h-5 ml-2" /> : <Save className="w-5 h-5 ml-2" />}
+              {saving ? "در حال ذخیره..." : saved ? "ذخیره شد" : "ذخیره و اعمال فوری"}
+            </Button>
+            <div className="flex items-center gap-2 text-xs text-slate-300 px-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              کلیدها فقط روی سرور نگهداری می‌شوند و در پاسخ‌ها ماسک می‌گردند.
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 bg-white/5 backdrop-blur border-white/10 rounded-3xl text-sm text-slate-300 space-y-3">
+          <h3 className="text-white font-bold">چطور سرعت پاسخ بالا می‌ماند؟</h3>
+          <ul className="list-disc list-inside space-y-1 mr-2">
+            <li>پاسخ‌ها به‌صورت استریم و بلافاصله بعد از تولید اولین کلمه نمایش داده می‌شوند.</li>
+            <li>بودجه توکن ورودی به‌صورت هوشمند مدیریت می‌شود؛ تاریخچه‌های طولانی خودکار خلاصه/حذف می‌شوند.</li>
+            <li>حداکثر توکن خروجی برای چت کوتاه نگه داشته می‌شود تا تاخیر اولین کلمه زیر یک ثانیه بماند.</li>
+            <li>در صورت تایم‌اوت یا خطای سرویس، درخواست به‌طور خودکار روی سرویس دوم اجرا می‌شود.</li>
+            <li>تگ‌های تفکر مدل‌های Reasoning (مثل &lt;think&gt;) از خروجی حذف می‌شوند.</li>
+          </ul>
         </Card>
       </div>
     </div>

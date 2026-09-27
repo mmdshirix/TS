@@ -1,7 +1,9 @@
 import { getSql, createChatbot } from "@/lib/db"
 import { getDefaultBlockLayout } from "@/lib/theme-presets"
 import { getThemeSeedAssets, seedAssetUrl } from "@/lib/theme-seed-assets"
-import type { StoreCategorySlug } from "@/lib/store-categories"
+import { getStoreKind, type StoreCategorySlug } from "@/lib/store-categories"
+import { seedClinicDefaults } from "@/lib/clinic-db"
+import { seedPharmacyDefaults } from "@/lib/pharmacy-db"
 
 // --- TYPE DEFINITIONS ---
 
@@ -184,6 +186,10 @@ export async function createStore(data: {
   try {
     await seedThemeContent(store.id, data.category)
     await seedDefaultLandingBlocks(store.id, data.category)
+    const kind = getStoreKind(data.category)
+    if (kind === "clinic") await seedClinicDefaults(store.id)
+    if (kind === "pharmacy") await seedPharmacyDefaults(store.id)
+    await sql`UPDATE stores SET template_id = ${kind} WHERE id = ${store.id}`
   } catch (error) {
     console.error("Error seeding theme content for store:", error)
   }

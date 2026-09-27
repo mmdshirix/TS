@@ -18,6 +18,11 @@ services:
     ports:
       - "3000:3000"
 
+    # Runtime secrets (database, AI providers, Meta app, admin bootstrap) live in
+    # ../deploy/platform.env — see that file. Values under `environment:` override it.
+    env_file:
+      - ../deploy/platform.env
+
     # ✅ Persist uploaded files (public/uploads) across restarts/redeploys —
     #    without this, anything written by app/api/upload lives only on the
     #    container's writable layer and is wiped on the next `docker compose up`

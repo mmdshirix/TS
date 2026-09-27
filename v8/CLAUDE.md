@@ -51,7 +51,9 @@ No formal test framework exists. Manual testing is done via `/test-*` and `/debu
 
 Required at runtime (not build time):
 - `DATABASE_URL` — PostgreSQL connection string
-- `DEEPSEEK_API_KEY` — AI API key for chat responses
+- `AI_PROVIDER` — `arvan` (default) or `deepseek`; also switchable at runtime in `/super-admin/ai-settings`
+- `ARVAN_API_URL` / `ARVAN_API_KEY` / `ARVAN_MODEL` — ArvanCloud AI gateway (primary provider)
+- `DEEPSEEK_API_KEY` — DeepSeek (fallback / switchable provider)
 - `NEXT_PUBLIC_APP_URL` — Public base URL of the application
 
 Build uses a fake `DATABASE_URL` to avoid requiring a real DB connection during `next build`.

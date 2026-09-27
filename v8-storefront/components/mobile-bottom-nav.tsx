@@ -3,27 +3,42 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Compass, Store, ShoppingCart, Sparkles } from "lucide-react"
+import { Home, Compass, Store, ShoppingCart, Sparkles, CalendarDays, Stethoscope, Upload, Pill, Phone } from "lucide-react"
+import type { ThemeDefinition } from "@/lib/themes"
 import { cn } from "@/lib/utils"
 
-const NAV_ITEMS = [
-  { href: "/", label: "خانه", icon: Home },
-  { href: "/explorer", label: "اکسپلور", icon: Compass },
-  { href: "/shop", label: "فروشگاه", icon: Store },
-  { href: "/cart", label: "سبد خرید", icon: ShoppingCart },
-]
-
-declare global {
-  interface Window {
-    ChatbotWidget?: { open: () => void; close: () => void; toggle: () => void }
+function itemsFor(theme?: ThemeDefinition) {
+  if (theme?.kind === "clinic") {
+    return [
+      { href: "/", label: "خانه", icon: Home },
+      { href: "/book", label: "نوبت", icon: CalendarDays },
+      { href: "/shop", label: "خدمات", icon: Stethoscope },
+      { href: "/contact", label: "تماس", icon: Phone },
+    ]
   }
+  if (theme?.kind === "pharmacy") {
+    return [
+      { href: "/", label: "خانه", icon: Home },
+      { href: "/shop", label: "محصولات", icon: Pill },
+      { href: "/prescription", label: "نسخه", icon: Upload },
+      { href: "/cart", label: "سبد", icon: ShoppingCart },
+    ]
+  }
+  return [
+    { href: "/", label: "خانه", icon: Home },
+    { href: "/explorer", label: "اکسپلور", icon: Compass },
+    { href: "/shop", label: "فروشگاه", icon: Store },
+    { href: "/cart", label: "سبد خرید", icon: ShoppingCart },
+  ]
 }
 
-export default function MobileBottomNav() {
+export default function MobileBottomNav({ theme }: { theme?: ThemeDefinition }) {
   const pathname = usePathname()
   const [cartCount, setCartCount] = useState(0)
+  const items = itemsFor(theme)
 
   useEffect(() => {
+    if (theme?.kind === "clinic") return
     fetch("/api/cart")
       .then((res) => res.json())
       .then((data) => {
@@ -31,21 +46,21 @@ export default function MobileBottomNav() {
         setCartCount(total)
       })
       .catch(() => {})
-  }, [])
+  }, [theme?.kind])
 
   return (
     <div className="md:hidden fixed bottom-4 inset-x-4 z-40 flex items-center justify-center gap-2">
-      <button
-        type="button"
-        onClick={() => window.ChatbotWidget?.toggle()}
+      <a
+        href="#chat"
+        data-open-chat
         aria-label="دستیار هوش مصنوعی"
-        className="flex-shrink-0 w-14 h-14 rounded-full bg-brand-secondary text-white flex items-center justify-center shadow-lg shadow-black/20 hover:opacity-90 transition-opacity"
+        className="flex-shrink-0 w-14 h-14 rounded-full brand-gradient text-white flex items-center justify-center shadow-lg shadow-black/20 hover:opacity-90 transition-opacity"
       >
         <Sparkles className="w-6 h-6" />
-      </button>
+      </a>
 
       <nav className="flex-1 max-w-sm flex items-center justify-around bg-store-nav rounded-full shadow-lg shadow-black/20 px-1 py-1.5">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = pathname === item.href
           const Icon = item.icon
           return (

@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server"
-import { getChatbotById, getChatbotFAQs, getChatbotProducts, getChatbotKnowledgeBase, saveMessage, getSql } from "@/lib/db"
+import { getChatbotById, getChatbotFAQs, getChatbotProducts, getChatbotKnowledgeBase, saveMessage } from "@/lib/db"
+import { streamChatCompletion, getToneInstructions, AIUnavailableError, type AIMessage } from "@/lib/ai"
 import {
   getUserSubscriptionStatus,
   incrementTokenUsage,
@@ -11,28 +12,6 @@ import {
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
-
-async function callDeepSeekAPI(apiKey: string, systemPrompt: string, messages: any[], useArvan: boolean = false) {
-  const url = useArvan
-    ? `${process.env.ARVAN_API_URL}/chat/completions`
-    : "https://api.deepseek.com/chat/completions";
-
-  const deepseekResponse = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: useArvan ? "Xerxes-1" : "deepseek-chat",
-      messages: [{ role: "system", content: systemPrompt }, ...messages],
-      max_tokens: 4096,
-      temperature: 0.8,
-      stream: true,
-    }),
-  })
-  return deepseekResponse
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,11 +26,6 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(messages) || messages.length === 0) {
       return Response.json({ error: "پیام‌ها نامعتبر هستند" }, { status: 400 })
     }
-
-    // Determine AI provider - check chatbot's ai_provider field first, then fallback to env config
-    const aiProvider = (process.env.AI_PROVIDER as "deepseek" | "arvan") || "deepseek"
-    const deepseekApiKey = process.env.DEEPSEEK_API_KEY
-    const arvanApiKey = process.env.ARVAN_API_KEY
 
     const [chatbot, faqs, products, knowledgeBase] = await Promise.all([
       getChatbotById(chatbotIdNum).catch(() => null),
@@ -199,135 +173,76 @@ ${toneInstructions}
 
     const inputTokens = estimateTokens(systemPrompt + formattedMessages.map((m) => m.content).join(" "))
 
-    // Fetch global settings from database
-    let dbAiProvider = null
-    let dbAiApiKey = null
+    // Provider preference: chatbot-specific override > global (super-admin) default > env.
+    // Per-chatbot API keys are honoured when they match the resolved provider.
+    const preferredProvider = chatbot.ai_provider === "deepseek" || chatbot.ai_provider === "arvan" ? chatbot.ai_provider : null
+    const keyOverride =
+      preferredProvider === "arvan" ? chatbot.arvan_api_key : preferredProvider === "deepseek" ? chatbot.deepseek_api_key : null
+
+    let ai
     try {
-      const sql = getSql()
-      const globalSettings = await sql`SELECT setting_key, setting_value FROM global_settings`
-      const settingsMap = new Map(globalSettings.map((s: any) => [s.setting_key, s.setting_value]))
-      dbAiProvider = settingsMap.get("ai_provider")
-      dbAiApiKey = settingsMap.get("ai_api_key")
-    } catch (dbErr) {
-      console.error("[Chat] Error fetching global settings from DB:", dbErr)
+      ai = await streamChatCompletion({
+        system: systemPrompt,
+        messages: formattedMessages as AIMessage[],
+        provider: preferredProvider,
+        apiKey: keyOverride || null,
+        temperature: 0.7,
+        // Short, fast answers: the widget renders progressively, and tone presets already
+        // ask for 2-6 sentences. Larger budgets only add latency.
+        maxTokens: isPinnedProductMode ? 700 : 600,
+        inputBudgetTokens: 5500,
+        timeoutMs: 30_000,
+      })
+    } catch (err) {
+      if (err instanceof AIUnavailableError) {
+        return Response.json({ error: "کلید API یافت نشد" }, { status: 500 })
+      }
+      console.error("[Chat] AI error:", err instanceof Error ? err.message : err)
+      return Response.json({ error: "خطا در برقراری ارتباط با هوش مصنوعی" }, { status: 502 })
     }
 
-    // Determine which AI to use: chatbot-specific > global setting > environment
-    const currentProvider = chatbot.ai_provider || dbAiProvider || aiProvider
-    const useArvan = currentProvider === "arvan"
+    console.log(`[Chat] Streaming via ${ai.provider} (${ai.model}); estimated input tokens:`, inputTokens)
 
-    let apiKey = null
-    if (useArvan) {
-      apiKey = chatbot.arvan_api_key || (dbAiProvider === "arvan" ? dbAiApiKey : null) || arvanApiKey || process.env.ARVAN_API_KEY
-    } else {
-      apiKey = chatbot.deepseek_api_key || (dbAiProvider === "deepseek" ? dbAiApiKey : null) || deepseekApiKey || process.env.DEEPSEEK_API_KEY
-    }
+    // Persist + meter once the model finishes, without blocking the stream.
+    ai.done
+      .then(async ({ text, outputTokens }) => {
+        try {
+          const userIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown"
+          const userAgent = req.headers.get("user-agent") || "unknown"
+          await saveMessage(chatbotIdNum, userLastMessage, text, userIp, userAgent)
+          if (chatbot.user_id) {
+            await incrementTokenUsage(chatbot.user_id, inputTokens + outputTokens)
+            if (isPinnedProductMode) await incrementSalesAdvisorUsage(chatbot.user_id)
+          }
+        } catch (saveError) {
+          console.error("[Chat] Error saving message:", saveError)
+        }
+      })
+      .catch(() => {})
 
-    if (!apiKey) {
-      console.error(`No API key configured for ${useArvan ? "Arvan" : "DeepSeek"} AI`)
-      return Response.json({ error: "کلید API یافت نشد" }, { status: 500 })
-    }
-
-    console.log(`[Chat] Calling ${useArvan ? "Arvan" : "DeepSeek"} AI... Estimated input tokens:`, inputTokens)
-
-    const aiResponse = await callDeepSeekAPI(
-      apiKey as string,
-      systemPrompt,
-      formattedMessages,
-      useArvan
-    )
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text()
-      console.error(`[Chat] ${useArvan ? "Arvan" : "DeepSeek"} API error:`, aiResponse.status, errorText)
-      return Response.json({ error: "خطا در برقراری ارتباط با هوش مصنوعی" }, { status: aiResponse.status })
-    }
-
+    // Widget expects the Vercel AI data-stream text protocol: `0:"chunk"\n`
     const encoder = new TextEncoder()
-    let fullText = ""
-
+    const reader = ai.stream.getReader()
     const stream = new ReadableStream({
-      async start(controller) {
-        const reader = aiResponse.body?.getReader()
-        const decoder = new TextDecoder()
-
-        if (!reader) {
+      async pull(controller) {
+        const { value, done } = await reader.read()
+        if (done) {
           controller.close()
           return
         }
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-
-            if (done) {
-              console.log("[Chat] Stream complete, response length:", fullText.length)
-
-              try {
-                const userIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown"
-                const userAgent = req.headers.get("user-agent") || "unknown"
-                await saveMessage(chatbotIdNum, userLastMessage, fullText, userIp, userAgent)
-
-                if (chatbot.user_id) {
-                  const outputTokens = estimateTokens(fullText)
-                  const totalTokens = inputTokens + outputTokens
-                  await incrementTokenUsage(chatbot.user_id, totalTokens)
-                  console.log(
-                    "[Chat] Token usage tracked:",
-                    totalTokens,
-                    "(input:",
-                    inputTokens,
-                    "output:",
-                    outputTokens,
-                    ")",
-                  )
-
-                  // Track sales advisor usage if in pinned product mode
-                  if (isPinnedProductMode) {
-                    await incrementSalesAdvisorUsage(chatbot.user_id)
-                    console.log("[Chat] Sales advisor usage tracked")
-                  }
-                }
-              } catch (saveError) {
-                console.error("[Chat] Error saving message:", saveError)
-              }
-
-              controller.close()
-              break
-            }
-
-            const chunk = decoder.decode(value, { stream: true })
-            const lines = chunk.split("\n")
-
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const data = line.slice(6)
-                if (data === "[DONE]") continue
-
-                try {
-                  const parsed = JSON.parse(data)
-                  const content = parsed.choices?.[0]?.delta?.content
-
-                  if (content) {
-                    fullText += content
-                    const formattedChunk = `0:${JSON.stringify(content)}\n`
-                    controller.enqueue(encoder.encode(formattedChunk))
-                  }
-                } catch (e) {}
-              }
-            }
-          }
-        } catch (error) {
-          console.error("[Chat] Stream error:", error)
-          controller.error(error)
-        }
+        controller.enqueue(encoder.encode(`0:${JSON.stringify(value)}\n`))
+      },
+      cancel() {
+        reader.cancel().catch(() => {})
       },
     })
 
     return new Response(stream, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+        "X-AI-Provider": ai.provider,
         Connection: "keep-alive",
       },
     })
@@ -337,42 +252,3 @@ ${toneInstructions}
   }
 }
 
-function getToneInstructions(tone: string): string {
-  switch (tone) {
-    case "concise":
-      return `🎯 سبک پاسخ‌دهی شما (مختصر و مفید):
-- پاسخ‌های کوتاه و دقیق (2-3 جمله کوتاه)
-- مستقیم به اصل مطلب بروید
-- فقط اطلاعات کلیدی
-- استفاده از ایموجی برای جذابیت (حداکثر 2 عدد)
-- لحن دوستانه و کاربردی
-- در پایان، یک سوال کوتاه برای ادامه مکالمه بپرسید`
-
-    case "professional":
-      return `🎯 سبک پاسخ‌دهی شما (حرفه‌ای):
-- پاسخ‌های متوسط (3-4 جمله)
-- لحن رسمی و محترمانه
-- استفاده محدود از ایموجی (فقط در ابتدا)
-- اطلاعات دقیق و معتبر
-- ساختار منطقی
-- در پایان، پیشنهاد کمک بیشتر بدهید`
-
-    case "intelligent":
-      return `🎯 سبک پاسخ‌دهی شما (هوشمند و تحلیلی):
-- پاسخ‌های جامع (4-6 جمله)
-- تحلیل دقیق با جزئیات
-- استفاده از ایموجی‌های تحلیلی (📊 💡 🔍)
-- توضیحات فنی و تخصصی
-- لحن آموزشی
-- در پایان، سوال تحلیلی بپرسید`
-
-    case "friendly":
-    default:
-      return `🎯 سبک پاسخ‌دهی شما (دوستانه و باهوش):
-- پاسخ‌های کوتاه و هوشمند (2-3 جمله کوتاه) برای شروع مکالمه
-- استفاده از ایموجی‌های متنوع برای جذابیت (✨ 💡 🌟 🎯)
-- لحن صمیمی، گرم و دوستانه
-- اطلاعات مفید و خواندنی
-- در پایان، کاربر را به ادامه گفتگو تشویق کنید با یک سوال یا پیشنهاد جالب`
-  }
-}

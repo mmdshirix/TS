@@ -24,6 +24,11 @@ export interface Store {
   contact_phone: string | null
   contact_address: string | null
   social_links: Record<string, any>
+  tagline?: string | null
+  template_id?: string | null
+  working_hours?: Record<string, any> | null
+  settings?: Record<string, any> | null
+  custom_domain?: string | null
 }
 
 export interface ProductCategory {
@@ -33,6 +38,8 @@ export interface ProductCategory {
   slug: string
   parent_id: number | null
   image_url: string | null
+  description?: string | null
+  sort_order?: number
 }
 
 export interface Product {
@@ -51,6 +58,54 @@ export interface Product {
   status: "active" | "draft"
   rating_avg: number
   rating_count: number
+  meta_title?: string | null
+  meta_description?: string | null
+  badge?: string | null
+  attributes?: Record<string, any> | null
+  created_at?: string
+}
+
+export type ProductWithImage = Product & { image_url: string | null }
+
+/** Products with their primary image in one query (avoids N+1 on landing pages). */
+export async function listProductsWithImages(
+  storeId: number,
+  options: { categoryId?: number | null; limit?: number; sort?: "newest" | "price_asc" | "price_desc" | "popular" } = {},
+): Promise<ProductWithImage[]> {
+  try {
+    const sql = getSql()
+    const limit = Math.min(48, options.limit || 8)
+    const order =
+      options.sort === "price_asc"
+        ? sql`p.price ASC`
+        : options.sort === "price_desc"
+          ? sql`p.price DESC`
+          : options.sort === "popular"
+            ? sql`p.rating_count DESC, p.created_at DESC`
+            : sql`p.created_at DESC`
+    const result = await sql`
+      SELECT p.*, (SELECT url FROM product_images WHERE product_id = p.id ORDER BY sort_order ASC LIMIT 1) AS image_url
+      FROM products p
+      WHERE p.store_id = ${storeId} AND p.status = 'active'
+        AND (${options.categoryId ?? null}::int IS NULL OR p.category_id = ${options.categoryId ?? null})
+      ORDER BY ${order}
+      LIMIT ${limit}
+    `
+    return result as unknown as ProductWithImage[]
+  } catch (error) {
+    console.error("Error listing products with images:", error)
+    return []
+  }
+}
+
+export async function countActiveProducts(storeId: number): Promise<number> {
+  try {
+    const sql = getSql()
+    const r = await sql`SELECT COUNT(*)::int AS count FROM products WHERE store_id = ${storeId} AND status = 'active'`
+    return Number(r[0]?.count || 0)
+  } catch {
+    return 0
+  }
 }
 
 export interface ProductImage {
@@ -128,7 +183,7 @@ export async function listLandingBlocks(storeId: number, page: string = "home"):
 export async function listCategories(storeId: number): Promise<ProductCategory[]> {
   try {
     const sql = getSql()
-    const result = await sql`SELECT * FROM product_categories WHERE store_id = ${storeId} ORDER BY name ASC`
+    const result = await sql`SELECT * FROM product_categories WHERE store_id = ${storeId} ORDER BY COALESCE(sort_order, 0) ASC, name ASC`
     return result as unknown as ProductCategory[]
   } catch (error) {
     console.error("Error fetching categories:", error)

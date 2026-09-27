@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { askAI } from "@/lib/ai"
 import { getChatbotFAQs, getChatbotProducts } from "@/lib/db"
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -7,16 +8,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const { conversationHistory } = await req.json()
 
     console.log("[v0] Suggest questions for chatbot:", chatbotId)
-
-    const apiKey = process.env.DEEPSEEK_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({
-        suggestions: [
-          { question: "محصولات پرفروش کدامند؟", emoji: "🔥" },
-          { question: "قیمت‌ها چطور است؟", emoji: "💰" },
-        ],
-      })
-    }
 
     const [faqs, products] = await Promise.all([
       getChatbotFAQs(chatbotId).catch(() => []),
@@ -49,38 +40,18 @@ ${productList ? `محصولات: ${productList}` : ""}
 فقط JSON برگردان:
 [{"question": "سوال؟", "emoji": "🤔"}, {"question": "سوال؟", "emoji": "💡"}]`
 
-    const response = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.9,
-        max_tokens: 300,
-      }),
-    })
-
-    if (!response.ok) {
-      console.error("[v0] DeepSeek error:", response.status)
-      return NextResponse.json({
-        suggestions: [
-          { question: "بیشتر توضیح می‌دهید؟", emoji: "🤔" },
-          { question: "قیمت چقدر است؟", emoji: "💰" },
-        ],
-      })
+    let resultText = ""
+    try {
+      resultText = await askAI(prompt, { temperature: 0.9, maxTokens: 300, timeoutMs: 12_000 })
+    } catch (err) {
+      console.error("[v0] AI error:", err instanceof Error ? err.message : err)
     }
-
-    const data = await response.json()
-    const resultText = data.choices?.[0]?.message?.content || ""
 
     console.log("[v0] AI suggestions response:", resultText)
 
     let suggestions = []
     try {
-      const jsonMatch = resultText.match(/\[.*\]/s)
+      const jsonMatch = resultText.match(/\[[\s\S]*\]/)
       if (jsonMatch) {
         suggestions = JSON.parse(jsonMatch[0])
       }

@@ -3,113 +3,62 @@
 import { useState } from "react"
 import Link from "next/link"
 import { LayoutGrid, List } from "lucide-react"
-import type { Product } from "@/lib/db"
+import type { ProductWithImage } from "@/lib/db"
+import type { ThemeDefinition } from "@/lib/themes"
+import { ThemedProductCard } from "@/components/themes/shared"
+import { Stagger, StaggerItem } from "@/components/motion"
+import { discountPercent, formatToman } from "@/lib/landing-content"
 
-interface ProductWithImage extends Product {
-  imageUrl: string | null
-}
-
-export default function ProductListing({ products }: { products: ProductWithImage[] }) {
+export default function ProductListing({ products, variant = "tech" }: { products: ProductWithImage[]; variant?: ThemeDefinition["card"] }) {
   const [view, setView] = useState<"grid" | "list">("grid")
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
-        <div className="inline-flex rounded-xl border overflow-hidden">
-          <button
-            onClick={() => setView("grid")}
-            className={`p-2 ${view === "grid" ? "bg-brand text-white" : "text-gray-500"}`}
-            aria-label="نمایش شبکه‌ای"
-          >
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-xs text-muted">{products.length.toLocaleString("fa-IR")} محصول</span>
+        <div className="inline-flex rounded-xl border border-theme overflow-hidden">
+          <button onClick={() => setView("grid")} className={`p-2 ${view === "grid" ? "bg-brand text-white" : "text-muted"}`} aria-label="نمایش شبکه‌ای">
             <LayoutGrid className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => setView("list")}
-            className={`p-2 ${view === "list" ? "bg-brand text-white" : "text-gray-500"}`}
-            aria-label="نمایش لیستی"
-          >
+          <button onClick={() => setView("list")} className={`p-2 ${view === "list" ? "bg-brand text-white" : "text-muted"}`} aria-label="نمایش لیستی">
             <List className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {products.length === 0 ? (
-        <p className="text-center text-gray-400 py-16">محصولی یافت نشد</p>
+        <p className="text-center text-muted py-16">محصولی یافت نشد</p>
       ) : view === "grid" ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {products.map((product) => {
-            const hasDiscount = product.compare_at_price && Number(product.compare_at_price) > Number(product.price)
-            const discountPercent = hasDiscount
-              ? Math.round(100 - (Number(product.price) / Number(product.compare_at_price)) * 100)
-              : 0
-            return (
-              <Link
-                key={product.id}
-                href={`/product/${product.slug}`}
-                className="group rounded-2xl border overflow-hidden hover:shadow-md transition-shadow bg-white"
-              >
-                <div className="relative aspect-square bg-gray-100 overflow-hidden">
-                  {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl || "/placeholder.svg"}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">بدون تصویر</div>
-                  )}
-                  {hasDiscount && (
-                    <span className="absolute top-2 right-2 bg-orange-500 text-white text-xs font-bold rounded-full px-2 py-1">
-                      {discountPercent}٪
-                    </span>
-                  )}
-                </div>
-                <div className="p-3">
-                  <h3 className="text-sm font-medium text-gray-900 truncate">{product.name}</h3>
-                  <div className="mt-1 flex items-center gap-2">
-                    {hasDiscount && (
-                      <span className="text-xs text-gray-400 line-through">
-                        {Number(product.compare_at_price).toLocaleString()}
-                      </span>
-                    )}
-                    <p className="text-sm font-bold text-gray-900">{Number(product.price).toLocaleString()} تومان</p>
-                  </div>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
+        <Stagger className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-5">
+          {products.map((product) => (
+            <StaggerItem key={product.id}>
+              <ThemedProductCard product={product} variant={variant} />
+            </StaggerItem>
+          ))}
+        </Stagger>
       ) : (
-        <div className="space-y-3">
+        <Stagger className="space-y-3">
           {products.map((product) => {
-            const hasDiscount = product.compare_at_price && Number(product.compare_at_price) > Number(product.price)
+            const off = discountPercent(product.price, product.compare_at_price)
             return (
-              <Link
-                key={product.id}
-                href={`/product/${product.slug}`}
-                className="flex items-center gap-4 rounded-2xl border p-3 hover:shadow-md transition-shadow bg-white"
-              >
-                <div className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
-                  {product.imageUrl ? (
-                    <img src={product.imageUrl || "/placeholder.svg"} alt={product.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">بدون تصویر</div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900 truncate">{product.name}</h3>
-                  {product.description && <p className="text-sm text-gray-500 line-clamp-1 mt-1">{product.description}</p>}
-                </div>
-                <div className="flex-shrink-0 text-left">
-                  {hasDiscount && (
-                    <p className="text-xs text-gray-400 line-through">{Number(product.compare_at_price).toLocaleString()}</p>
-                  )}
-                  <p className="font-bold text-gray-900">{Number(product.price).toLocaleString()} تومان</p>
-                </div>
-              </Link>
+              <StaggerItem key={product.id}>
+                <Link href={`/product/${product.slug}`} className="flex items-center gap-4 rounded-brand border border-theme bg-card p-3 hover:border-brand transition">
+                  <div className="w-20 h-20 rounded-xl bg-black/5 overflow-hidden flex-shrink-0">
+                    {product.image_url ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-muted text-xs">بدون تصویر</div>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-ink truncate">{product.name}</h3>
+                    {product.description && <p className="text-sm text-muted line-clamp-1 mt-1">{product.description}</p>}
+                  </div>
+                  <div className="flex-shrink-0 text-left">
+                    {off > 0 && <p className="text-xs text-muted line-through">{Number(product.compare_at_price).toLocaleString("fa-IR")}</p>}
+                    <p className="font-bold text-ink">{formatToman(product.price)}</p>
+                  </div>
+                </Link>
+              </StaggerItem>
             )
           })}
-        </div>
+        </Stagger>
       )}
     </div>
   )

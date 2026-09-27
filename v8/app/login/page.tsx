@@ -52,9 +52,23 @@ const carouselImages = [
   },
 ]
 
+function getNextUrl(): string {
+  if (typeof window === "undefined") return "/dashboard"
+  const next = new URLSearchParams(window.location.search).get("next")
+  // only allow same-origin relative paths
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard"
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<"login" | "register">("login")
+
+  useEffect(() => {
+    // /login?tab=register (used by the WordPress "build my site" hand-off)
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "register") {
+      setActiveTab("register")
+    }
+  }, [])
   const [showPassword, setShowPassword] = useState(false)
 
   const [loginPhone, setLoginPhone] = useState("")
@@ -158,7 +172,7 @@ export default function LoginPage() {
 
       if (result.success) {
         console.log("[v0] Login successful, redirecting...")
-        router.push("/dashboard")
+        router.push(getNextUrl())
       } else {
         setLoginError(result.error || "رمز عبور یا شماره تلفن اشتباه است")
       }
