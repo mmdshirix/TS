@@ -1,0 +1,29 @@
+# v0 runtime files (should only exist in preview, not in git)
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+
+# Common ignores
+node_modules/
+.next/
+.env*.local
+.DS_Store
+
+# Secrets
+.env
+.env.*
+.claude/settings.local.json
+
+# Build output
+*.tsbuildinfo
+
+# Backup archives
+*.zip
+*.rar
+
+# Personal notes and scratch files
+bale pay.txt
+bugs.txt
+capcha.txt
+todo.txt
+curl_out.html

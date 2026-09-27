@@ -1,0 +1,71 @@
+/* Widget-specific CSS to completely lock viewport on mobile */
+
+/* Lock html and body to viewport - prevent any page scroll */
+html,
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  /* Prevent elastic/rubber-band scrolling on iOS */
+  overscroll-behavior: none !important;
+  -webkit-overflow-scrolling: auto !important;
+  /* Prevent touch move on body */
+  touch-action: none !important;
+}
+
+/* Use dynamic viewport height for mobile browsers */
+html {
+  height: 100vh !important;
+  height: 100dvh !important;
+  height: -webkit-fill-available !important;
+}
+
+body {
+  height: 100vh !important;
+  height: 100dvh !important;
+  height: -webkit-fill-available !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  min-height: -webkit-fill-available !important;
+}
+
+/* Prevent pull-to-refresh on mobile */
+body {
+  overscroll-behavior-y: none !important;
+}
+
+/* Main widget container - fixed to viewport */
+#widget-root {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  height: 100dvh !important;
+  overflow: hidden !important;
+  touch-action: none !important;
+}
+
+/* Only the scrollable content area should allow touch scrolling */
+.widget-scrollable-content {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  touch-action: pan-y !important;
+}
+
+/* Prevent any scrolling on non-scrollable areas */
+.widget-no-scroll {
+  overflow: hidden !important;
+  touch-action: none !important;
+}

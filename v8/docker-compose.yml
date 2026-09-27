@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # DATABASE_URL is intentionally NOT passed here — the Dockerfile bakes in a
+        # fake placeholder for build time (lib/db.ts never connects at module load),
+        # and the real value is injected below under `environment:` at container
+        # start instead. Passing the real password as a build arg would leak it into
+        # this image's layer history (readable via `docker history`).
+        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        - NEXT_PUBLIC_STACK_PROJECT_ID=${NEXT_PUBLIC_STACK_PROJECT_ID}
+        - NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=${NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY}
+    
+    ports:
+      - "3000:3000"
+
+    # ✅ Persist uploaded files (public/uploads) across restarts/redeploys —
+    #    without this, anything written by app/api/upload lives only on the
+    #    container's writable layer and is wiped on the next `docker compose up`
+    volumes:
+      - uploads_data:/app/public/uploads
+
+    environment:
+      # ✅ Server configuration
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      
+      # ✅ Database configuration (external PostgreSQL on Chabakan)
+      #    Values come from .env next to this file (not committed to git)
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGRES_URL=${DATABASE_URL}
+      - POSTGRES_PRISMA_URL=${DATABASE_URL}
+      - DATABASE_URL_UNPOOLED=${DATABASE_URL}
+      - POSTGRES_URL_NON_POOLING=${DATABASE_URL}
+
+      # ✅ Database individual parameters (for ORMs like Prisma)
+      - PGHOST=${PGHOST}
+      - PGPORT=${PGPORT}
+      - PGUSER=${PGUSER}
+      - PGPASSWORD=${PGPASSWORD}
+      - PGDATABASE=${PGDATABASE}
+      - POSTGRES_HOST=${PGHOST}
+      - POSTGRES_USER=${PGUSER}
+      - POSTGRES_PASSWORD=${PGPASSWORD}
+      - POSTGRES_DATABASE=${PGDATABASE}
+
+      # ✅ Super admin + TalkSell WordPress API
+      - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD}
+      - TALKSELL_API_KEY=${TALKSELL_API_KEY}
+      - TALKSELL_SUBSCRIPTION_API_KEY=${TALKSELL_SUBSCRIPTION_API_KEY}
+      
+      # ✅ Stack Auth configuration
+      - STACK_SECRET_SERVER_KEY=${STACK_SECRET_SERVER_KEY}
+      - NEXT_PUBLIC_STACK_PROJECT_ID=${NEXT_PUBLIC_STACK_PROJECT_ID}
+      - NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=${NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY}
+      
+      # ✅ App URL
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      # ✅ Server-only base URL (used to build absolute upload URLs at request time,
+      #    unlike NEXT_PUBLIC_APP_URL which is baked in at `npm run build` on the host)
+      - APP_URL=${APP_URL:-https://platform-talksell.ir}
+
+      # ✅ API Keys (optional)
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ARVAN_API_KEY=${ARVAN_API_KEY}
+      - ARVAN_API_URL=${ARVAN_API_URL}
+      - AI_PROVIDER=${AI_PROVIDER}
+      
+      # ✅ Next.js specific
+      - NEXT_TELEMETRY_DISABLED=1
+
+      # ✅ Cap the V8 heap so it garbage-collects proactively instead of growing
+      #    unbounded until the kernel OOM-kills the process under concurrent load
+      #    (this crashed the app with just 2 simultaneous users — see investigation
+      #    notes; adjust the number up if the host has more than ~1-2GB free RAM)
+      - NODE_OPTIONS=${NODE_OPTIONS:---max-old-space-size=768}
+
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    
+    # ✅ برای اتصال به اینترنت و دیتابیس خارجی
+    network_mode: bridge
+    
+    # ✅ در صورت نیاز به log محدود
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  uploads_data:

@@ -1,0 +1,128 @@
+/* Enhanced mobile viewport locking with modern units and iOS Safari fixes */
+
+/* Lock html and body to viewport - prevent page scroll */
+html {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  /* Use modern viewport units with fallbacks */
+  height: 100vh !important;
+  height: 100dvh !important;
+  height: -webkit-fill-available !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
+  max-height: -webkit-fill-available !important;
+  overflow: hidden !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  /* Prevent elastic/rubber-band scrolling on iOS */
+  overscroll-behavior: none !important;
+  -webkit-overflow-scrolling: auto !important;
+  /* Prevent touch move on body */
+  touch-action: none !important;
+}
+
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  /* Use modern viewport units with fallbacks */
+  height: 100vh !important;
+  height: 100dvh !important;
+  height: -webkit-fill-available !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  min-height: -webkit-fill-available !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
+  max-height: -webkit-fill-available !important;
+  overflow: hidden !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  /* Prevent pull-to-refresh and overscroll on mobile */
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
+  -webkit-overflow-scrolling: auto !important;
+  touch-action: none !important;
+}
+
+/* Main widget container - fixed to viewport */
+#widget-root {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  height: -webkit-fill-available !important;
+  overflow: hidden !important;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+  -webkit-overflow-scrolling: auto !important;
+}
+
+/* Only the scrollable content area should allow touch scrolling */
+.widget-scrollable-content {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  overscroll-behavior-y: contain !important;
+  touch-action: pan-y !important;
+  /* Ensure it fills available space */
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+/* Prevent any scrolling on non-scrollable areas */
+.widget-no-scroll {
+  overflow: hidden !important;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+}
+
+/* Additional iOS Safari fixes */
+@supports (-webkit-touch-callout: none) {
+  html {
+    height: -webkit-fill-available !important;
+  }
+
+  body {
+    height: -webkit-fill-available !important;
+    min-height: -webkit-fill-available !important;
+  }
+
+  #widget-root {
+    height: -webkit-fill-available !important;
+  }
+}
+
+/* Ensure widget content is always visible and rendered properly */
+html, body {
+  background-color: #ffffff !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+}
+
+#widget-root {
+  background-color: #ffffff !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Ensure all content renders with proper layering */
+body * {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
